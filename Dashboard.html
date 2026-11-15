@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Location Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
+    .card { padding: 14px; margin: 10px 0; background: #f4f4f4; border-radius: 8px; }
+    .name { font-weight: 600; }
+    a { color: #0066cc; }
+  </style>
+</head>
+<body>
+  <h1>Live Dashboard</h1>
+  <div id="feed">Waiting for data…</div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = { /* same config as above */ };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const feed = document.getElementById('feed');
+
+    onValue(ref(db, 'locations'), (snapshot) => {
+      const data = snapshot.val();
+      if (!data) { feed.textContent = 'No data yet.'; return; }
+      feed.innerHTML = Object.entries(data).map(([user, loc]) => `
+        <div class="card">
+          <div class="name">${user}</div>
+          <div>${loc.latitude}, ${loc.longitude} (±${loc.accuracy} m)</div>
+          <div>Updated: ${loc.updatedAt}</div>
+          <a href="https://www.google.com/maps?q=${loc.latitude},${loc.longitude}" target="_blank">View on map</a>
+        </div>
+      `).join('');
+    });
+  </script>
+</body>
+</html>

